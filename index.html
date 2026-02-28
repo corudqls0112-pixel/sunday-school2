@@ -82,7 +82,6 @@ button:hover{ background:#003322; }
     display:none;
 }
 
-/* 📱 모바일 최적화 */
 @media (max-width: 768px){
     #intro{ padding:30px; font-size:16px; }
     #gameBox{ margin-top:40px; }
@@ -101,6 +100,11 @@ button:hover{ background:#003322; }
 </head>
 
 <body>
+
+<!-- ✅ 여기 추가됨 (문제 해결 부분) -->
+<audio id="bgm" loop>
+    <source src="https://actions.google.com/sounds/v1/ambiences/digital_watch_alarm_long.ogg" type="audio/ogg">
+</audio>
 
 <canvas id="matrixCanvas"></canvas>
 <div id="warningOverlay"></div>
@@ -124,7 +128,6 @@ button:hover{ background:#003322; }
 <script>
 
 // 🎵 배경음
-
 const bgm = document.getElementById("bgm");
 
 // 🚨 경고음
@@ -138,6 +141,7 @@ function redAlert(){
     },2000);
 }
 
+// (이하 JS 코드는 원래 그대로 — 생략 없이 유지)
 // 해커 멘트
 const hackerLines=[
 "??? : 아직 끝난 게 아니다...",

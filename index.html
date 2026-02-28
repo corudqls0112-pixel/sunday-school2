@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HeavenLight SERVER</title>
+
+<style>
+body{
+    margin:0;
+    background:black;
+    color:#00ff99;
+    font-family:monospace;
+    overflow:hidden;
+}
+
+#matrixCanvas{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    z-index:-1;
+    background:black;
+}
+
+#warningOverlay{
+    position:fixed;
+    width:100%;
+    height:100%;
+    background:rgba(255,0,0,0.3);
+    display:none;
+    animation:blink 0.4s infinite;
+    pointer-events:none;
+}
+
+@keyframes blink{
+    0%{opacity:0.1;}
+    50%{opacity:0.8;}
+    100%{opacity:0.1;}
+}
+
+#intro{ padding:60px; white-space:pre-line; font-size:20px; }
+#startBtn{
+    display:none;
+    padding:12px 25px;
+    font-size:18px;
+    background:black;
+    color:#00ff99;
+    border:1px solid #00ff99;
+    cursor:pointer;
+}
+
+#gameBox{ display:none; text-align:center; margin-top:80px; }
+
+button{
+    background:black;
+    color:#00ff99;
+    border:1px solid #00ff99;
+    padding:10px 20px;
+    margin:8px;
+    cursor:pointer;
+}
+
+button:hover{ background:#003322; }
+
+#answerInput{
+    padding:8px;
+    font-size:16px;
+    background:black;
+    color:#00ff99;
+    border:1px solid #00ff99;
+}
+
+#hackerMsg{
+    position:fixed;
+    bottom:30px;
+    width:100%;
+    text-align:center;
+    color:red;
+    font-size:22px;
+    display:none;
+}
+
+/* 📱 모바일 최적화 */
+@media (max-width: 768px){
+    #intro{ padding:30px; font-size:16px; }
+    #gameBox{ margin-top:40px; }
+    h1{ font-size:20px; }
+    button{
+        width:90%;
+        font-size:16px;
+        padding:14px;
+    }
+    #answerInput{
+        width:85%;
+        font-size:16px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="matrixCanvas"></canvas>
+<div id="warningOverlay"></div>
+<div id="intro"></div>
+<div id="hackerMsg"></div>
+
+<center>
+<button id="startBtn" onclick="startGame()">▶ 복구 작전 시작</button>
+</center>
+
+<div id="gameBox">
+<h1>🕵️ 말씀 서버 복구 미션</h1>
+<p id="score"></p>
+<p id="question"></p>
+<div id="options"></div>
+<input type="text" id="answerInput" style="display:none;">
+<br>
+<button id="submitBtn" onclick="submitAnswer()" style="display:none;">입력</button>
+</div>
+
+<script>
+
+// 🎵 배경음
+const bgm = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_8a0a8d2c06.mp3?filename=dark-suspense-110997.mp3");
+bgm.loop = true;
+bgm.volume = 0.5;
+
+// 🚨 경고음
+const alertSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+function redAlert(){
+    document.getElementById("warningOverlay").style.display="block";
+    alertSound.play();
+    setTimeout(()=>{
+        document.getElementById("warningOverlay").style.display="none";
+    },2000);
+}
+
+// 해커 멘트
+const hackerLines=[
+"??? : 아직 끝난 게 아니다...",
+"??? : 기억이 흐릿한 것 같은데?",
+"??? : 서버 복구? 웃기지 마라.",
+"??? : 점수는 내가 관리한다.",
+"??? : 다음 문제에서 무너질 것이다."
+];
+
+const hackerMocking=[
+"??? : 하하... 그게 정답이라고?",
+"??? : 설교를 들은 게 맞나?",
+"??? : 서버는 아직 잠겨 있다.",
+"??? : 이 정도로 날 이길 수 있을까?",
+"??? : 다시 생각해봐라."
+];
+
+function showHackerMessage(text){
+    let box=document.getElementById("hackerMsg");
+    box.innerText=text;
+    box.style.display="block";
+    setTimeout(()=>box.style.display="none",3000);
+}
+
+// ===== 인트로 =====
+let introText=
+"⚠ 서버 해킹 감지 ⚠\n\n"+
+" 하늘의 빛 교회에 말씀 코드가 사라졌다...\n\n"+
+"??? : 말씀 기록을 삭제하겠다...\n"+
+"??? : 아무도 말씀을 기억 못하게 만들겠어...\n\n";
+
+let i=0;
+function typeWriter(){
+    if(i<introText.length){
+        document.getElementById("intro").innerHTML+=introText.charAt(i);
+        i++;
+        setTimeout(typeWriter,30);
+    }else{
+        redAlert();
+        setTimeout(()=>document.getElementById("startBtn").style.display="block",1500);
+    }
+}
+typeWriter();
+
+// ===== 퀴즈 =====
+const quiz=[
+{type:"mc",question:"[1단계] 하나님께서 먹지 말라고 하신 나무는?",
+options:["1) 생명나무","2) 동산 중앙의 나무","3) 포도나무","4) 무화과나무"],answer:"2"},
+{type:"mc",question:"[2단계] 아담과 하와가 죄 후 한 행동이 아닌 것은?",
+options:["1) 벗은 줄 알았다","2) 무화과 잎 옷 제작","3) 하나님을 피해 숨음","4) 회개 기도"],answer:"4"},
+{type:"mc",question:"[3단계] 죄 후 아담과 하와는?",
+options:["1) 서로를 탓함","2) 즉시 용서 구함","3) 아무 일도 없음","4) 다시 열매 먹음"],answer:"1"},
+{type:"mc",question:"[4단계] 죄의 결과는 무엇인가?",
+options:["1) 기쁨","2) 영원한 생명","3) 사망(관계 두절)","4) 상급"],answer:"3"},
+{type:"text",question:"[최종 복구] 하나님과 관계가 깨어진 이유는?",answer:"죄"}
+];
+
+let current=0;
+let score=0;
+
+function startGame(){
+    bgm.play();
+    document.getElementById("intro").style.display="none";
+    document.getElementById("startBtn").style.display="none";
+    document.getElementById("gameBox").style.display="block";
+    document.getElementById("score").innerText="점수: 0";
+    loadQuestion();
+}
+
+function loadQuestion(){
+    const q=quiz[current];
+    document.getElementById("question").innerText=q.question;
+    document.getElementById("options").innerHTML="";
+    document.getElementById("answerInput").style.display="none";
+    document.getElementById("submitBtn").style.display="none";
+
+    if(q.type==="mc"){
+        q.options.forEach((opt,index)=>{
+            let btn=document.createElement("button");
+            btn.innerText=opt;
+            btn.onclick=()=>checkAnswer((index+1).toString());
+            document.getElementById("options").appendChild(btn);
+        });
+    }else{
+        document.getElementById("answerInput").style.display="inline";
+        document.getElementById("submitBtn").style.display="inline";
+    }
+
+    if(Math.random()<0.5){
+        setTimeout(()=>{
+            redAlert();
+            showHackerMessage(hackerLines[Math.floor(Math.random()*hackerLines.length)]);
+        },1500);
+    }
+}
+
+function submitAnswer(){
+    let input=document.getElementById("answerInput").value.trim();
+    checkAnswer(input);
+}
+
+function checkAnswer(ans){
+    let correct=quiz[current].answer;
+    let isCorrect=(quiz[current].type==="text")?ans.includes("죄"):ans===correct;
+
+    if(isCorrect){
+        score+=20;
+        document.getElementById("score").innerText="점수: "+score;
+        current++;
+        if(current>=quiz.length){ winGame(); }
+        else{ loadQuestion(); }
+    }else{
+        redAlert();
+        showHackerMessage(hackerMocking[Math.floor(Math.random()*hackerMocking.length)]);
+        score-=5;
+        document.getElementById("score").innerText="점수: "+score;
+    }
+
+    document.getElementById("answerInput").value="";
+}
+
+function winGame(){
+    bgm.pause();
+    document.body.innerHTML=
+    "<h1 style='color:gold;text-align:center;margin-top:150px;'>🎉 SEASON 1 CLEAR 🎉</h1>"+
+    "<h2 style='text-align:center;'>최종 점수: "+score+"점</h2>"+
+    "<h2 style='text-align:center;color:red;margin-top:40px;'>시즌2 프리퀄 영상 재생 중...</h2>";
+    setTimeout(season2Preview,4000);
+}
+
+function season2Preview(){
+document.body.innerHTML=
+"<div style='color:#00ff99;font-family:monospace;padding:60px;font-size:20px;white-space:pre-line;'>"+
+"서버 심층 스캔...\n\n"+
+"??? : 너희는 첫 번째 관문을 통과했다.\n\n"+
+"하지만 진짜 암호는 아직 남아있다.\n\n"+
+"SEASON 2 : THE HIDDEN CHAPTER\n\n"+
+"계속하려면... 다시 모여라.\n"+
+"</div>";
+}
+
+// ===== 선명한 매트릭스 =====
+const canvas=document.getElementById("matrixCanvas");
+const ctx=canvas.getContext("2d");
+
+function resizeCanvas(){
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=window.innerWidth*dpr;
+    canvas.height=window.innerHeight*dpr;
+    canvas.style.width=window.innerWidth+"px";
+    canvas.style.height=window.innerHeight+"px";
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr,dpr);
+}
+resizeCanvas();
+
+window.addEventListener("resize",resizeCanvas);
+
+const letters="010101010101";
+const fontSize=16;
+let columns=Math.floor(window.innerWidth/fontSize);
+let drops=Array(columns).fill(1);
+
+function drawMatrix(){
+    ctx.fillStyle="rgba(0,0,0,0.05)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle="#00ff99";
+    ctx.font=fontSize+"px monospace";
+
+    for(let i=0;i<drops.length;i++){
+        const text=letters[Math.floor(Math.random()*letters.length)];
+        ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+
+        if(drops[i]*fontSize>window.innerHeight && Math.random()>0.975){
+            drops[i]=0;
+        }
+        drops[i]++;
+    }
+}
+setInterval(drawMatrix,33);
+
+</script>
+</body>
+</html>

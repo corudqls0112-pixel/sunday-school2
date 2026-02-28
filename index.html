@@ -124,9 +124,23 @@ button:hover{ background:#003322; }
 <script>
 
 // 🎵 배경음
-const bgm = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_8a0a8d2c06.mp3?filename=dark-suspense-110997.mp3");
-bgm.loop = true;
-bgm.volume = 0.5;
+<audio id="bgm" loop preload="auto">
+  <source src="bgm.mp3" type="audio/mpeg">
+</audio>
+
+const bgm = document.getElementById("bgm");
+
+function startGame(){
+
+    bgm.load();   // 먼저 로드
+    bgm.currentTime = 0;
+    bgm.volume = 0.6;
+
+    bgm.play().catch(()=>{
+        alert("소리를 재생하려면 한 번 더 눌러주세요.");
+    });
+
+}
 
 // 🚨 경고음
 const alertSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
